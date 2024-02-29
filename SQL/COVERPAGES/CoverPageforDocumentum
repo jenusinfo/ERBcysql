@@ -1,0 +1,47 @@
+SELECT       FORMAT(boxCoverPages.Id, '00000000') AS BOXCOVERPAGEID  
+
+            ,FORMAT(batchCoverPages.InterviewSessionId, '000000000000000') AS BATCHCOVERPAGEID
+
+            ,batchCoverPages.[Type] AS COVERTYPE
+
+           ,SUBSTRING(docTypes.DocType, 0, CHARINDEX('-', docTypes.DocType)) AS DOCTYPECODE
+
+            ,SUBSTRING(docTypes.DocType, CHARINDEX('-', docTypes.DocType)+1, 255) AS DOCTYPENAME
+
+            ,bankUnits.UnitCode AS BRANCH
+
+            ,batchCoverPages.ProcessType AS PROCESSTYPE
+
+            ,getdate() as CREATEDON
+
+            ,'jdocs' as CREATEDBY
+
+                  ,'ACTIVE' as PAGESTATUS
+
+        FROM BoxCoverPages
+
+            INNER JOIN BatchCoverPages
+
+                ON boxCoverPages.Id = batchCoverPages.BoxId
+
+            left JOIN BankUnits
+
+                ON bankUnits.Id = batchCoverPages.BankUnitId
+
+            INNER JOIN InterviewSessions
+
+                ON InterviewSessions.Id = batchCoverPages.InterviewSessionId
+
+            CROSS APPLY
+
+            (
+
+                SELECT Nodes.node.value('.', 'NVARCHAR(255)') AS DocType
+
+                FROM interviewSessions.XMLData.nodes('//Inddoctypes') AS Nodes(node)
+
+            ) AS docTypes
+
+        where BoxCoverPages.Status = 'Closed' and cast(isnull(BoxCoverPages.LastClosedOn, BoxCoverPages.ModifiedOn) as date) <= '2023-12-31'
+
+        ORDER BY batchCoverPages.BoxId, batchCoverPages.Id
